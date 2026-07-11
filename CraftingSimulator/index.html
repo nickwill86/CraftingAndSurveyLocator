@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NickWIll86's Just For Fun Crafting Simulator</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ======================= TITLE BAR ======================= -->
+  <div id="titlebar">
+    <div>
+      <h1>NickWIll86's Just For Fun Crafting Simulator</h1>
+      <div class="subtitle">SWGEmu Core3 crafting sandbox — live data from your server files</div>
+    </div>
+    <div id="server-status">loading server data…</div>
+  </div>
+
+  <!-- ======================= MAIN TABS ======================= -->
+  <div id="main-tabs"></div>
+
+  <!-- ======================= CONTENT ======================= -->
+  <div id="content">
+
+    <!-- ---------- MAP TAB ---------- -->
+    <div class="tabpane" id="tab-map">
+      <div id="map-layout">
+        <!-- left: resource picker -->
+        <div class="swg-panel col" id="map-controls">
+          <h2>Resource Survey</h2>
+          <div class="row">
+            <label class="grow">Planet
+              <select id="map-planet" style="width:100%"></select>
+            </label>
+          </div>
+          <input type="text" id="map-res-filter" placeholder="Filter resources (name, class, type)…">
+          <div class="small muted" id="map-res-count"></div>
+          <div id="map-res-list" class="scroll grow" style="min-height:120px"></div>
+          <hr class="swg">
+          <h3>Spawn map (server algorithm)</h3>
+          <div class="row">
+            <label>Seed <input type="number" id="map-seed" style="width:110px"></label>
+            <button id="map-reroll" title="New random spawn shift — the live seed lives in the server object DB">Re-roll shift</button>
+          </div>
+          <div class="row">
+            <label>Concentration
+              <select id="map-conc">
+                <option value="auto" selected>Auto (by class)</option>
+                <option value="1">High (chemical/gas/JTL)</option>
+                <option value="2">Medium (default)</option>
+                <option value="3">Low (ore/water/solar/wind)</option>
+              </select>
+            </label>
+          </div>
+          <div class="small muted" id="map-density-note"></div>
+        </div>
+
+        <!-- middle: the satellite map -->
+        <div id="map-wrap">
+          <div id="map-stack">
+            <img id="map-img" alt="planet map" draggable="false">
+            <canvas id="map-overlay"></canvas>
+            <div id="map-hit"></div>
+            <div id="map-coords">--</div>
+          </div>
+        </div>
+
+        <!-- right: info + hand sampling -->
+        <div class="swg-panel col" id="map-info">
+          <h2>Resource Info</h2>
+          <div id="map-res-info"><span class="muted">No resource selected.</span></div>
+          <hr class="swg">
+          <h2>Hand Sampling</h2>
+          <div class="row">
+            <label>Surveying skill <input type="number" id="survey-skill" value="100" min="0" max="155" style="width:64px"></label>
+            <button id="map-sample" class="gold">Sample</button>
+          </div>
+          <div class="small muted" style="margin:4px 0">Uses the exact <code>sendSampleResults</code> math from your server. Successful pulls go to your inventory.</div>
+          <div id="sample-info"></div>
+          <div id="sample-log" class="small" style="margin-top:6px"></div>
+          <div class="legend-grad" style="margin-top:8px"></div>
+          <div class="row small muted" style="justify-content:space-between"><span>0%</span><span>concentration</span><span>100%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- RESOURCES TAB ---------- -->
+    <div class="tabpane" id="tab-resources">
+      <div class="swg-panel" style="height:100%;display:flex;flex-direction:column">
+        <h2>Server Resource List <span class="muted small" id="res-total"></span></h2>
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="res-search" placeholder="Search 14,000+ named resources…" class="grow">
+          <select id="res-planet"></select>
+        </div>
+        <div class="scroll grow">
+          <table class="swg" id="res-table">
+            <thead><tr>
+              <th>Name</th><th>Class</th><th>Planet</th>
+              <th>CR</th><th>CD</th><th>DR</th><th>FL</th><th>HR</th><th>MA</th><th>PE</th><th>OQ</th><th>SR</th><th>UT</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="muted small" style="padding:6px">Showing first 300 matches — refine your search. Gold = at class cap, green = top 15% of cap. Click a row to view it on the map.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- PROFESSIONS (shared pane) ---------- -->
+    <div class="tabpane" id="tab-professions">
+      <div class="prof-layout">
+        <div class="swg-panel col">
+          <h2>Draft Schematics</h2>
+          <input type="text" id="prof-search" placeholder="Search schematics…">
+          <div class="small muted" id="schem-count"></div>
+          <div id="schem-list" class="schem-list grow"></div>
+        </div>
+        <div class="swg-panel scroll" id="schem-detail"></div>
+      </div>
+    </div>
+
+    <!-- ---------- INVENTORY TAB ---------- -->
+    <div class="tabpane" id="tab-inventory">
+      <div id="inv-layout">
+        <div class="swg-panel col">
+          <h2>Inventory <span class="muted small" id="inv-count"></span></h2>
+          <div id="inv-grid-wrap" class="grow"><div id="inv-grid"></div></div>
+        </div>
+        <div class="swg-panel col">
+          <h2>Acquire Items</h2>
+          <button id="inv-add-resource" class="gold">＋ Add resource units (server list)</button>
+          <button id="inv-add-loot" class="gold">＋ Get looted crafting part</button>
+          <button id="inv-clear" class="danger">Clear inventory</button>
+          <hr class="swg">
+          <div class="small muted">
+            <p style="margin-bottom:6px"><b class="cyan">Resources</b> — every named resource seeded by your server (resource_manager_spawns.lua), with its real in-game stats. Sampling on the Map tab also deposits units here.</p>
+            <p style="margin-bottom:6px"><b class="cyan">Looted parts</b> — all loot items from your server's loot scripts. Pick the loot level (up to 350 — level 300 ≈ the classic max-tier drop) and rarity tier; stats are rolled with the exact LootValues algorithm your server uses.</p>
+            <p>Hover any item for its stats. Click for details / destroy.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- BUFFS TAB ---------- -->
+    <div class="tabpane" id="tab-buffs">
+      <div class="swg-panel" id="buffs-body" style="min-height:60%"></div>
+    </div>
+
+    <!-- ---------- HELP TAB ---------- -->
+    <div class="tabpane" id="tab-help">
+      <div class="swg-panel scroll" style="height:100%">
+        <div class="help-body">
+          <h2 class="panel-title">Help Guide — Welcome, crafter!</h2>
+          <p>This simulator is <b class="gold">hooked directly into your real server files</b>. Every resource, schematic, loot item, stat range and formula was extracted from your <code>C:\Companion</code> SWGEmu (Core3) server and its TRE archives — including the satellite maps you see on the Map tab. Nothing is faked: the assembly rolls, experimentation math, loot rolls and hand-sampling yields run the same code your server runs.</p>
+
+          <h2 class="panel-title">1 · Resource Map (surveying &amp; hand sampling)</h2>
+          <p><b class="cyan">Pick a planet</b>, then <b class="cyan">pick a resource</b> from the list (it shows everything that can spawn there — planet-locked resources plus galaxy-wide ones). The colored overlay is the resource's concentration map, generated with the <i>exact</i> Simplex-noise algorithm from <code>SpawnDensityMap.h</code>: blue = trace, green = good, yellow/red = rich.</p>
+          <p><b class="cyan">Hover</b> the map to read the concentration % at any coordinate — the same number a survey tool would show in game. <b class="cyan">Click</b> to plant your sampling flag, set your Surveying skill (Master Artisan = 100+), and press <b class="gold">Sample</b> to hand-sample exactly like standing in the dirt spamming <code>/sample</code>. Successful pulls are added to your inventory.</p>
+          <p class="muted small">One honest note: each live spawn's noise <i>seed</i> is rolled when the resource shifts in and is stored inside the server's object database, so this tool can't know the current live shape — but the algorithm, density ranges and behavior are identical. Use <b>Re-roll shift</b> to explore possible spawn shapes, or type a seed to share a map with friends.</p>
+
+          <h2 class="panel-title">2 · Resources tab</h2>
+          <p>The full list of named resources seeded by your server — over fourteen thousand. Search by name, class or type; filter by planet. Stats are colored against the <b>class caps from your server's resource tree</b> (gold = capped, green = near cap). Selecting a resource on the Map tab also shows <b class="cyan">"Best used for"</b> — the schematics whose experimentation lines benefit most from that resource's stats.</p>
+
+          <h2 class="panel-title">3 · Profession tabs &amp; crafting</h2>
+          <p>Each profession tab lists every draft schematic granted by that profession's skill tree (straight from <code>skills.iff</code> and <code>schematic_group.iff</code>). Click a schematic to see its ingredient slots, resource weighting (e.g. <code>CD 66% + OQ 33%</code>) and experimental ranges, then hit <b class="gold">Start Crafting Session</b>.</p>
+          <p>The crafting window works like the in-game tool: <b class="cyan">fill each socket</b> from your inventory (resources need enough units; component slots take looted or crafted parts), then <b class="gold">Assemble</b>. Your assembly roll uses the server formula with your buffed skills. Then <b class="cyan">experimentation</b>: allocate points into property lines (boxes = points), press <b class="gold">Experiment</b>, and watch each line's blue bar climb toward its red cap marker — the cap is set by your ingredients' weighted stats, exactly as in game. Finish with <b class="gold">Create Prototype</b>.</p>
+
+          <h2 class="panel-title">4 · Inventory &amp; looted parts</h2>
+          <p>Your inventory looks and works like the in-game bag: an icon grid with quantity badges, hover tooltips with full stats. Add resource stacks directly, or open <b class="cyan">Get looted crafting part</b> to browse every loot item on your server. Choose the <b>loot level</b> (drag up to 350 — 300 is the classic top-tier drop level) and a rarity tier (Experimental / Enhanced / Exceptional / Legendary); the item's stats are rolled with your server's <code>LootValues</code> level-scaling math, so a level-300 Exceptional part rolls like the real thing.</p>
+
+          <h2 class="panel-title">5 · Buffs (the "maxed crafter")</h2>
+          <p>By default the simulator crafts as a <b class="gold">fully maxed crafter</b>: master profession skill mods (summed from every skill box in <code>skills.iff</code>), +25 assembly &amp; +25 experimentation from clothing/armor attachments (the server's wearable skill-mod cap), a +12 <b>Bespin Port</b> (experimentation food buff), a +10 <b>Pyollian Cake</b> (assembly food buff), and a max-crafted tool at +15 effectiveness. Toggle any of these on the Buffs tab, or type exact skill values to test other loadouts. Entertainer Inspiration only boosts crafting <i>XP</i> on Core3 servers, not crafting rolls — the guide on that tab explains why.</p>
+
+          <h2 class="panel-title">Tips</h2>
+          <p>• Experimentation success is heavily weighted by luck rolls — even a maxed crafter gets ~5% amazing successes. Use several small experiments (1-2 points) on important lines to reduce risk, exactly like in game.<br>
+          • The red cap marker on each experimentation bar is <code>weighted resource stats ÷ 1000</code> — better resources literally raise your ceiling. Chase caps on the Resources tab.<br>
+          • Component slots marked <i>(optional)</i> can be skipped, but good looted parts in optional slots add stats the same way <code>applyComponentStats</code> does on the server.<br>
+          • Re-roll a loot part a few times — level scaling uses a distributed random curve, not a flat roll.</p>
+
+          <h2 class="panel-title">Data sources</h2>
+          <p class="small muted">resource_manager_spawns.lua (named resources &amp; stats) · datatables/resource/resource_tree.iff (class caps) · datatables/skill/skills.iff (skill mods, schematic grants) · datatables/crafting/schematic_group.iff · bin/scripts/object/draft_schematic (2,200+ schematics) · bin/scripts/object (experimental properties) · bin/scripts/loot/items (2,100+ loot items) · texture/ui_map_*.dds (satellite maps) · CraftingManagerImplementation.cpp, SharedLabratory.cpp, ResourceLabratory.cpp, LootValues.cpp, SpawnDensityMap.h, ResourceSpawner.cpp (formulas).</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ======================= FOOTER ======================= -->
+  <div id="footer">
+    <a class="discord" href="https://discord.gg/KQ9FQwfDYw" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.3 18.3 0 0 0-5.5 0 12.6 12.6 0 0 0-.61-1.25.08.08 0 0 0-.08-.04 19.7 19.7 0 0 0-4.88 1.52.07.07 0 0 0-.04.03C.53 9.05-.32 13.58.1 18.06c0 .02.01.04.03.05a19.9 19.9 0 0 0 6 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.22-2a.08.08 0 0 0-.04-.1 13 13 0 0 1-1.87-.9.08.08 0 0 1-.01-.12l.37-.29a.07.07 0 0 1 .08 0 14.2 14.2 0 0 0 12.06 0 .07.07 0 0 1 .08 0l.37.3a.08.08 0 0 1 0 .12 12.3 12.3 0 0 1-1.88.89.08.08 0 0 0-.04.1c.36.7.77 1.37 1.22 2a.08.08 0 0 0 .08.03 19.8 19.8 0 0 0 6.02-3.03.08.08 0 0 0 .03-.05c.5-5.18-.84-9.68-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42 0-1.33.95-2.42 2.15-2.42 1.22 0 2.18 1.1 2.16 2.42 0 1.34-.94 2.42-2.16 2.42z"/></svg>
+      NickWIll86's Discord
+    </a>
+    <span class="muted">Just for fun — not affiliated with Disney/LucasArts. May the crafts be with you.</span>
+    <span class="muted" style="margin-left:auto">Data extracted from your server on 2026-07-11</span>
+  </div>
+</div>
+
+<!-- ======================= CRAFTING WINDOW ======================= -->
+<div id="craft-window">
+  <div id="craft-frame">
+    <div id="craft-titlebar">
+      <span class="t">Crafting — <span id="craft-title-name"></span></span>
+      <span class="x"><button id="craft-close">✕ Close</button></span>
+    </div>
+    <div style="padding:8px 10px 0"><div id="craft-stages">
+      <div class="stage">1 · Assembly</div>
+      <div class="stage">2 · Experimentation</div>
+      <div class="stage">3 · Prototype</div>
+    </div></div>
+    <div id="craft-body">
+      <div id="craft-main"></div>
+      <div id="craft-side"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MODAL + TOOLTIP + TOAST ======================= -->
+<div class="modal-back" id="modal-back">
+  <div class="modal">
+    <div class="mhead"><span class="t" id="modal-title"></span><span class="x"><button id="modal-close">✕</button></span></div>
+    <div class="mbody" id="modal-body"></div>
+  </div>
+</div>
+<div id="tooltip"></div>
+<div id="toast"></div>
+
+<!-- ======================= DATA + CODE ======================= -->
+<script src="data/strings.js"></script>
+<script src="data/resource_tree.js"></script>
+<script src="data/resources.js"></script>
+<script src="data/skills.js"></script>
+<script src="data/schem_groups.js"></script>
+<script src="data/schematics.js"></script>
+<script src="data/loot.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
