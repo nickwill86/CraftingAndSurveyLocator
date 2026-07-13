@@ -1,0 +1,1 @@
+I havent really messed around with this. Please goto the discord if you find anything weird... i know theres lots, so if you want to make a small note that claude ai will understand and fix it for us, ill just give the prompts and see what it does, and ill give you credit for these prompts
